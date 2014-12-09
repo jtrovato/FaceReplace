@@ -22,45 +22,22 @@
 \maketitle
 
 \section{Option 2}
-For this assignment Justin and I will be completing the second option specified in the homework. We plan to use code from previous projects and third party sources to produce a robust face replacement program. Most of the software we will be using can be found in the Matlab Vision Toolbox, but we are exploring other options as well our preliminary list is shown in figure .
-
-	\begin{center}
-		\begin{tabular}{|c|}
-			\hline
-			MATLAB Vision Toolbox Packages \\
-			\hline
-			\\
-			CascadeObjectDetector\\
-			\\
-			Total outgoing ride\\
-			Installation date\\
-			Latitude\\
-			Longitude\\
-			\hline
-		\end{tabular}
-	\end{center}
-
+For this assignment Justin and I will be completing the second option specified in the homework. We plan to use code from previous projects and third party sources to produce a robust face replacement program. Most of the software we will be using can be found in the Matlab Vision Toolbox, but we are exploring other options as well. Our preliminary list of third party functions includes: vision.CascadeObjectDetector, corner, cornermetric, extractHOGFeatures, extractFeatures, and matchFeatures.
 
 \section{Approach}
-Our preliminary approach is outlined below. As the project progresses, we expect this to change to include elements of face replacement that we have not yet considered or run into. We predict these changes to occur to primarily in the Refine Replacement Image step, to which there exists many possible implementations.
-
-\subsection{Replacement Face Selection}
-My partner and I have uploaded straight-on images of each of our faces, which we will use as replace faces to be inserted into our test image. If the test set or video portion prove difficult to match with these source images we plan to upload more images of our faces in different orientations.Eventually, we plan to search through possible replacement faces to find the best match for the faces detected in the test set.
-\subsection{Target Face Detection}
-First, our program detects faces using the MATLAB Vision toolbox. Specifically, we use a CascadeObjectDetector to produce a bounding box on each face in the input image. In our first approach we will attempt to replace all faces in a test image with a specified replacement face. In our final program, we will only replace the face that best matches with our replacement face. 
-
-\subsection{Face Feature Detection}
-Fro every face in the test image and the the tar
-
-\subsection{Target-Replacement Face Feature Matching}
-
-\subsection{Replace Image Matching}
-voting, least squares
-\subsection{Warp Replacement Image to Fit Target Image}
-\subsection{Refine Replacement Image}
-color correction, mask and blend, 
-\subsection{replace}
-\subsection{Tracking for Video}
+Our preliminary approach is outlined below. As the project progresses, we expect this to change to include elements of face replacement that we have not yet considered or run into. We predict these changes to occur to primarily in the (5) Refine Replacement Image step, in which there exist many possible implementations.\\
+Our general approach is to follow this basic outline:
+\begin{enumerate}
+    \item Identify features in the replacement faces (3)
+    \item Detect and extract faces in the source image (2)
+    \item Identify features in the source faces (3)
+    \item Match features in the source and replacement faces (3)
+    \item Warp the source faces to the replacement face orientations (3)
+    \item Select the closest matching source face to each replacement face (4)
+    \item Color-correct the replacement face to match the source face (5)
+    \item Create source and replacement face masks with blending (5)
+    \item Replace source faces with the replacement faces (4)
+We use Matlab's vision.CascadeObjectDetector for faces for step 2. We have explored two options for steps 1 and 3: HOG features, and face components. In the first approach, we detect corners with Matlab's corner function and extract HOG features which we match using matchFeatures. This approach produced very poor matches as shown. Our second approach uses matlab's eye, nose, and mouth detectors to find the bounding boxes of face components in each image. This approach produces a smaller number of control points (four in this case), but the detection is much more robust as seen below. This approach can be strengthened using a deformable part model.
 
 
 \section{Preliminary Results} 
