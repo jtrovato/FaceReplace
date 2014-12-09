@@ -1,6 +1,6 @@
 % checkpoint document for CIS581
 
-\documentclass{article}
+\documentclass[10pt, twocolumn]{article}
 \usepackage{graphicx}
 \usepackage{color}
 \usepackage{listings}
@@ -8,6 +8,14 @@
 \usepackage{amsmath}
 \usepackage{placeins}
 \usepackage{caption}
+
+%remove space at top of doc
+\usepackage[showframe]{geometry}
+\setlength{\voffset}{-1in}
+\setlength{\headsep}{0pt}
+\usepackage{titling}
+\setlength{\droptitle}{-1cm}
+
 \usepackage{subcaption}
 
 
@@ -16,9 +24,9 @@
 \setcounter{secnumdepth}{0} %turn off section numbering
 \begin{document}
 
-\title{CIS519 Final Project Checkpoint}
-\author{Joe Trovato \and Justin Yim}
-\date{10 December 2014}
+\title{CIS519 Final Project Checkpoint\vspace{-2ex}}
+\author{Joe Trovato \and Justin Yim\vspace{-2ex}}
+\date{10 December 2014\vspace{-2ex}}
 \maketitle
 
 \section{Option 2}
@@ -64,6 +72,18 @@ color correction, mask and blend,
 
 
 \section{Preliminary Results} 
-In our initial attempt at implementing the above algorithm we have achieve face detection, feature extraction per face, and are currently working
+In our initial attempt at implementing the above algorithm we have achieve face detection, feature extraction per face, and are currently working on matching target faces to source faces. See figures below.
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.7\linewidth]{figures/corner_detection.png}
+\caption{corner detection on each face detected in the test image}
+\end{figure}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.7\linewidth]{figures/component_detection.png}
+\caption{detecting face components on each face detected in the test image}
+\end{figure}
 
 \end{document}
