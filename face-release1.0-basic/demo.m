@@ -3,7 +3,9 @@
 % If you are using a Windows machine, please use the basic convolution (fconv.cc).
 % This can be done by commenting out line 13 and uncommenting line 15 in
 % compile.m
-compile;
+%compile;
+
+close all
 
 % load and visualize model
 % Pre-trained model with 146 parts. Works best for faces larger than 80*80
@@ -15,10 +17,10 @@ load face_p146_small.mat
 % % Pre-trained model with 1050 parts. Give best performance on localization, but very slow
 % load multipie_independent.mat
 
-disp('Model visualization');
-visualizemodel(model,1:13);
-disp('press any key to continue');
-pause;
+%disp('Model visualization');
+%visualizemodel(model,1:13);
+%disp('press any key to continue');
+%pause;
 
 
 % 5 levels for each octave
@@ -35,10 +37,10 @@ else
     error('Can not recognize this model');
 end
 
-ims = dir('images/*.jpg');
+ims = dir('../SampleSet/easy/*.jpg');%  'images/*.jpg');
 for i = 1:length(ims),
     fprintf('testing: %d/%d\n', i, length(ims));
-    im = imread(['images/' ims(i).name]);
+    im = imread(['../SampleSet/easy/' ims(i).name]);%'images/' ims(i).name]);
     clf; imagesc(im); axis image; axis off; drawnow;
     
     tic;

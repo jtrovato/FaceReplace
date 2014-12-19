@@ -28,6 +28,7 @@ face_image1 = imread('iu.jpg');%'jennifer.jpg');%'justin_glasses.jpg');%'yao.jpg
 
 face_image2 = imread('yao.jpg');%
 
+% 2
 [ctrl_pts1, face1, components1] = facepts(face_image1);
 [face_height1,face_width1,~] = size(face1.im);
 face_size1 = mean(size(face1.im));
