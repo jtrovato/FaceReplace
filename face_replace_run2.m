@@ -66,24 +66,34 @@ addpath 'TestSet/more'
 addpath 'TestSet/pose'
 
 % Replacee and replacement faces
-im1 = imread('Jennifer_lawrence_as_katniss-wide.jpg');
-im2 = imread('justin_glasses.jpg');
+%im1_orig = imread('robert-downey-jr-5a.jpg');
+%im1_orig = imread('beard-champs4.jpg');
+%im2_orig = imread('justin_glasses.jpg');
 
-im1_orig = im1;
-im2_orig = im2;
+im1_orig = imread('mj.jpg');
+im2_orig = imread('justin_glasses.jpg');
+
+im1 = im1_orig;
+im2 = im2_orig;
 
 %im1 = imresize(im1,2);
+%im1 = imresize(im1,0.5);
 
-
-% FACE FEATURES ===========================================
-% Generate control points on the replacer and replacee faces for face
-% extraction and warping.
-% INPUTS:
+% FACE DETECTION ==========================================
+% Detect and select faces in image 1 (assumes there is only one replacer
+% face in image 2).
+% INPUTS: 
 %   im1
 %   im2
 % OUTPUTS:
-%   ctrlpts1: control points on the replacee face in image 1
-%   ctrlpts2: control points on the replacer face in image 2
+%   bbox1full: bounding boxes of all faces in image 1
+%   bbox2: bounding box of replacer face in image 2
+
+% PARAMETERS
+warp_pts = [6,   12,  23,  35,41, 52]; %59,67];%
+%           nose,eyeR,eyeL,mouth,chin,  jaw (OPTIONAL)
+hull_pts = [16,19, 27,30, 54,62, 59,67];
+%           browR, browL, chin,  jaw
 
 % Prepare Models and Detectors
 load face_p146_small.mat
@@ -99,103 +109,162 @@ end
 
 detectors.face = vision.CascadeObjectDetector();
 
-% Parameters
-warp_pts = [6,   12,  23,  35,41, 52]; %59,67];%
-%           nose,eyeR,eyeL,mouth,chin
-hull_pts = [16,19, 27,30, 53,62, 59,67];
-%           browR, browL, chin,  jaw
-
 % Detect faces
 bbox1full = step(detectors.face, im1);
+
+%{a
+% Face resizing
+if isempty(bbox1full) % try looking for small faces
+    im1 = imresize(im1,2);
+    bbox1full = step(detectors.face, im1);
+end
+if isempty(bbox1full) % try looking for big faces
+    im1 = imresize(im1,1/4);
+    bbos1full = step(detectors.face, im1);
+end
+if isempty(bbox1full) % no faces of any close size could be found
+    disp('No faces detected: exiting.')
+    return
+end
+
+mean_height = mean(bbox1full(:,3));
+if mean_height < 50
+    im1 = imresize(im1,50/mean_height);
+    bbox1full = step(detectors.face, im1);
+elseif mean_height > 400
+    im1 = imresize(im1,400/mean_height);
+    bbox1full = step(detectors.face, im1);
+end
+%}
 
 bbox2 = step(detectors.face, im2);
 bbox2 = round(bbox2(1,:).*[1,1,1.4,1.4] - bbox2(1,[3,4,1,2]).*[0.2,0.2,0,0]);
 bbox2([1,2]) = max(bbox2([1,2]),1);
 bbox2([3,4]) = min(bbox2([3,4]),[size(im2,2),size(im2,1)]-bbox2([1,2]));
 
-face2.pos = bbox2([1,2]);
-face2.im_orig = im2(bbox2(2) + (1:bbox2(3)),bbox2(1) + (1:bbox2(4)),:);
+im2_face_orig = im2(bbox2(2) + (1:bbox2(3)),bbox2(1) + (1:bbox2(4)),:);
 
 fprintf([num2str(size(bbox1full,1)),' faces detected\n'])
 for index = 1:size(bbox1full,1)
     fprintf(['face ',num2str(index),'/',num2str(size(bbox1full,1))])
         
-    % Extract each replacee face
+    % FACE FEATURES ===========================================
+    % Generate control points on the replacer and replacee faces for face
+    % extraction and warping.
+    % INPUTS:
+    %   im1
+    %   im2
+    % OUTPUTS:
+    %   im1_face: selected replacee face in im1
+    %   im2_face: selected replacer face in im2
+    %   h1, w1: dimensions of im1_face
+    %   h2, w2: dimensions of im2_face
+    %   ctrlpts1: control points on the replacee face in image 1
+    %   ctrlpts2: control points on the replacer face in image 2
+    %   extpts1: boundary edge points on replacee face in image 1
+    %   exrerior2: boundary edge points on replacer face in image 2
+
+    % Extract replacee face
     bbox1 = round(bbox1full(index,:).*[1,1,1.4,1.4] - bbox1full(index,[3,4,1,2]).*[0.2,0.2,0,0]);
     bbox1([1,2]) = max(bbox1([1,2]),1);
-    bbox1([3,4]) = min(bbox1([3,4]),[size(im1,2),size(im1,1)]-bbox1([1,2]));
+    bbox1([3,4]) = min(bbox1([3,4]),[size(im1,1),size(im1,2)]-bbox1([2,1]));
 
-    face1.pos = bbox1([1,2]);
-    face1.im = im1(bbox1(2) + (1:bbox1(3)),bbox1(1) + (1:bbox1(4)),:);
+    im1_face = im1(bbox1(2) + (1:bbox1(3)),bbox1(1) + (1:bbox1(4)),:);
 
-    % Resize replacer face to match for ease
-    face2.im = imresize(face2.im_orig,size(face1.im,1)/size(face2.im_orig,1));
-
-    % Control points
-    bs1 = detect(face1.im, model, model.thresh);
+    % Resize faces
+    if size(im1_face,1) > 200
+        im2_face = imresize(im2_face_orig,size(im1_face,1)/size(im2_face_orig,1));
+    else
+        im1_face = imresize(im1_face,200/size(im1_face,1));
+        im2_face = imresize(im2_face_orig,200/size(im2_face_orig,1));
+    end
+        
+    % Control and boundary points
+    % Feature points in image 1
+    bs1 = detect(im1_face, model, model.thresh);
     if isempty(bs1) % Face feature detection failure - try another face
         fprintf(' skip: common detection fail\n')
         continue
     end
-    bs1 = clipboxes(face1.im, bs1);
+    bs1 = clipboxes(im1_face, bs1);
     bs1 = nms_face(bs1,0.3);
     bs1 = bs1(1);
-
-    bs2 = detect(face2.im, model, model.thresh);
-    if isempty(bs2) % Face feature detection failure - try another face
-        fprintf(' skip: replacer face bad size; detection fail\n')
+    if length(bs1.xy) < 68
+        fprintf(' skip: over-rotation\n')
         continue
     end
-    bs2 = clipboxes(face2.im, bs2);
+
+    % Feature points in image 2
+    bs2 = detect(im2_face, model, model.thresh);
+    if isempty(bs2) % Face feature detection failure - try another face
+        fprintf(' skip: replacer detection fail (potential bad size)\n')
+        continue
+    end
+    bs2 = clipboxes(im2_face, bs2);
     bs2 = nms_face(bs2,0.3);
     bs2 = bs2(1);
+    if length(bs2.xy) < 68
+        fprintf(' skip: replacer over rotation (potential bad size)\n')
+        continue
+    end
 
+    % Control points
     ctrlpts1 = 0.5*(bs1.xy(warp_pts,[1,2]) + bs1.xy(warp_pts,[3,4]));
     ctrlpts2 = 0.5*(bs2.xy(warp_pts,[1,2]) + bs2.xy(warp_pts,[3,4]));
 
-    exterior1 = 0.5*(bs1.xy(hull_pts,[1,2]) + bs1.xy(hull_pts,[3,4]));
-    exterior2 = 0.5*(bs2.xy(hull_pts,[1,2]) + bs2.xy(hull_pts,[3,4]));
+    % Boundary points
+    extpts1 = 0.5*(bs1.xy(hull_pts,[1,2]) + bs1.xy(hull_pts,[3,4]));
+    extpts2 = 0.5*(bs2.xy(hull_pts,[1,2]) + bs2.xy(hull_pts,[3,4]));
 
     % Face image dimensions
-    [h1,w1,~] = size(face1.im);
-    [h2,w2,~] = size(face2.im);
-
+    [h1,w1,~] = size(im1_face);
+    [h2,w2,~] = size(im2_face);
+    
 
     % FACE ADJUSTMENT =========================================
     % Extract, color adjust, (and blend) the replacer face to match the
     % appearance of the replacee appearance.
     % INPUTS:
+    %   im1_face
+    %   im2_face
+    %   h1, w1
+    %   h2, w2
     %   ctrlpts1
     %   ctrlpts2
-    %   im1
-    %   im2
+    %   extpts1
+    %   extpts2
     % OUTPUTS: 
     %   mask2: region of im2 containing replacer face (including blend)
     %   im2adj: adjusted im2 to match colors of im1
 
-    convpts1 = exterior1(convhull(exterior1(:,1),exterior1(:,2)),:);
+    convpts1 = extpts1(convhull(extpts1(:,1),extpts1(:,2)),:);
     mask1 = poly2mask(convpts1(:,1),convpts1(:,2),h1,w1);
 
-    convpts2 = exterior2(convhull(exterior2(:,1),exterior2(:,2)),:);
+    convpts2 = extpts2(convhull(extpts2(:,1),extpts2(:,2)),:);
     mask2 = poly2mask(convpts2(:,1),convpts2(:,2),h2,w2);
 
-    means1 = zeros(1,3);
-    means2 = zeros(1,3);
-    color_adjust = zeros(size(face2.im));
+    means1 = zeros(size(im2_face));
+    means2 = zeros(size(im2_face));
+    color_scale = zeros(size(im2_face));
     for ii = 1:3
-        color1 = face1.im(:,:,ii);
-        color2 = face2.im(:,:,ii);
-        means1(ii) = mean(color1(mask1));
-        means2(ii) = mean(color2(mask2));
-        color_adjust(:,:,ii) = means1(ii)-means2(ii);
+        color1 = double(im1_face(:,:,ii));
+        color2 = double(im2_face(:,:,ii));
+        means1(:,:,ii) = median(color1(mask1));
+        means2(:,:,ii) = median(color2(mask2));
+        color_scale(:,:,ii) = std(color1(mask1))/std(color2(mask2));
     end
 
-    im2adj = double(face2.im) + color_adjust;
+    color_scale = 1/2*(color_scale+1);
+    im2adj = (double(im2_face) - means2).*color_scale + means1;
 
 
     % WARP ====================================================
     % Warp the replacer face to match the geometry of the replacee face.
     % INPUTS:
+    %   im1_face
+    %   im2_face
+    %   h1, w1
+    %   h2, w2
     %   ctrlpts1
     %   ctrlpts2
     %   mask2
@@ -204,29 +273,42 @@ for index = 1:size(bbox1full,1)
     %   mask2warp: warped mask2 to geometry of replacee face
     %   im2warp: warped im2adj to geometry of replacee face
 
+    % PARAMETERS
+    erode_frac = 1/30;
+    gaus_width = 1/5;
+    gaus_sig = 1/25;
+    
     im1pts = [[1,1; 1,h1; w1,1; w1,h1];ctrlpts1];
     im2pts = [[1,1; 1,h2; w2,1; w2,h2];ctrlpts2];
 
     mean_pts = (im1pts+im2pts)/2;
     tri = delaunay(mean_pts);
 
-    im2warp = morph(double(face1.im), im2adj, im1pts, im2pts, tri, 0, 1);
+    im2warp = morph(double(im1_face), im2adj, im1pts, im2pts, tri, 0, 1);
     im2warp = im2warp(1:h1,1:w1,:);
 
-    mask2warp = morph(double(face1.im(:,:,1)), mask2, im1pts, im2pts, tri, 1, 1);
+    mask2warp = morph(double(im1_face(:,:,1)), mask2, im1pts, im2pts, tri, 0, 1);
     mask2warp = mask2warp(1:h1,1:w1);
-    mask2warp = imerode(mask2warp,ones(round(h1/50)));
-    mask2warp = conv2(double(mask2warp),fspecial('gaussian',round(h1/5)*ones(1,2), h1/25),'same');
-    mask2warp = cat(3,mask2warp,mask2warp,mask2warp);
+    output_mask = mask2warp.*mask1;
+    output_mask = imerode(output_mask,ones(round(h1*erode_frac)));
+    output_mask = conv2(double(output_mask),...
+        fspecial('gaussian',round(h1*gaus_width)*ones(1,2), h1*gaus_sig),'same');
+    output_mask = cat(3,output_mask,output_mask,output_mask);
 
     % REPLACEMENT =============================================
     % Replacement & blending to produce final output image
-    first = double(face1.im);
+    % INPUTS:
+    %   im1_face
+    %   im2warp
+    % OUTPUTS:
+    %   im1, output: final image
+    
+    first = double(im1_face);
     second = double(im2warp);
 
     face_swap = zeros(h1,w1,3);
-    face_swap = face_swap + double(first).*(1-mask2warp);
-    face_swap = face_swap + double(second).*mask2warp;
+    face_swap = face_swap + double(first).*(1-output_mask);
+    face_swap = face_swap + double(second).*output_mask;
 
     face_swap = imresize(face_swap,bbox1(3)/size(face_swap,1));
 
@@ -242,29 +324,40 @@ for index = 1:size(bbox1full,1)
     % Display & other final debugging
     %{a
     figure(2)
-    subplot(2,3,4)
-    showboxes(face1.im, bs1, posemap); hold on; 
-    plot(exterior1(:,1),exterior1(:,2),'.b');
-    plot(ctrlpts1(:,1),ctrlpts1(:,2),'.g'); 
-    hold off
     subplot(2,3,1)
-    showboxes(face2.im, bs2, posemap); hold on; 
-    plot(exterior2(:,1),exterior2(:,2),'.b');
+    showboxes(im2_face, bs2, posemap);
+    hold on; 
+    plot(convpts2(:,1),convpts2(:,2),'.b-');
     plot(ctrlpts2(:,1),ctrlpts2(:,2),'.g'); 
     hold off
+    title('Replacer feature points')
+    subplot(2,3,4)
+    showboxes(im1_face, bs1, posemap);
+    hold on; 
+    plot(convpts1(:,1),convpts1(:,2),'.b-');
+    plot(ctrlpts1(:,1),ctrlpts1(:,2),'.g');  
+    hold off
+    title('Replacee feature points')
 
-    subplot(2,3,5)
-    imshow(face1.im + 50*uint8(mask2warp));
     subplot(2,3,2)
-    imshow(face2.im + 50*uint8(cat(3,mask2,mask2,mask2)));
-
-    subplot(2,3,6)
-    imshow(face_swap/255)
+    imshow(im2_face - 30 + 60*uint8(cat(3,mask2,mask2,mask2)));
+    title('Replacer unwarped mask')
+    subplot(2,3,5)
+    imshow(im1_face - 30 + 60*uint8(output_mask));
+    hold on
+    plot([convpts1(:,1);convpts1(1,1)],[convpts1(:,2);convpts1(1,2)],'b')
+    hold off
+    title('Replacee warped mask')
+    
     subplot(2,3,3)
-    imshow(im2warp/255)
+    imshow(im2warp/255 - 0.1 + 0.2*double(cat(3,mask2warp,mask2warp,mask2warp)))
     hold on
     plot(im1pts(:,1),im1pts(:,2),'.g')
     hold off
+    title('Replacer face warped')
+    subplot(2,3,6)
+    imshow(face_swap/255)
+    title('Replacee face replaced')
     %}
     
     drawnow
