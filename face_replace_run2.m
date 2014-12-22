@@ -70,7 +70,7 @@ addpath 'TestSet/pose'
 %im1_orig = imread('beard-champs4.jpg');
 %im2_orig = imread('justin_glasses.jpg');
 
-im1_orig = imread('mj.jpg');
+im1_orig = imread('Jennifer_lawrence_as_katniss-wide.jpg');
 im2_orig = imread('justin_glasses.jpg');
 
 im1 = im1_orig;

@@ -1,0 +1,26 @@
+%run_replacement.m
+% Run face_replace.m on every test set image
+
+testdir = '../TestSet/';
+
+folders = {'blending/','more/','pose/'};
+
+im2 = imread('replacers/justin_glasses.jpg');
+
+for ii = 1:length(folders)
+    disp(['Replacing faces from test set "',folders{ii},'".'])
+    testims = dir([testdir,folders{ii}]);
+
+    for jj = 3:length(testims)
+        filename = [testdir,folders{ii},testims(jj).name];
+        if isempty(strfind(filename,'.jpg'))
+            continue % not a .jpg file
+        end
+        disp(['file: ',testims(jj).name,'\n'])
+        im1 = imread(filename);
+
+        output = face_replace(im1,im2);
+        disp('Replacement finished. Press any button to continue.')
+        pause;
+    end
+end
