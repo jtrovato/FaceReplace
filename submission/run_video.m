@@ -1,7 +1,9 @@
-%run_replacement.m
-% Run face_replace.m on every test set image
+%run_videot.m
+% Run face_replace.m on every video frame and save it as an avi video
 
-testdir = '../TestSet/';
+outputdir = 'output/'; %location to save output images
+
+testdir = '../TestSet/'; %location of test images
 
 im2 = imread('replacers/justin_glasses.jpg');
 
@@ -19,7 +21,7 @@ for ii = 1:numframes
     output_frames(:,:,:,ii) = face_replace(im1,im2);
 end
 
-videoout = VideoWriter('videoreplaced.avi');
+videoout = VideoWriter([outputdir,'videoreplaced.avi']);
 set(videoout,'FrameRate',framerate)
 open(videoout)
 for ii = 1:numframes
