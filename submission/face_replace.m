@@ -27,6 +27,8 @@ function output = face_replace(im1, im2)
 %   bbox2: bounding box of replacer face in image 2
 %   im2_face_orig: cropped replacer face in image 2
 
+output = im1;
+
 % PARAMETERS
 warp_pts = [6,   12,  23,  35,41, 52]; %59,67];%
 %           nose,eyeR,eyeL,mouth,chin,  jaw (OPTIONAL)
@@ -54,27 +56,22 @@ detectors.face = vision.CascadeObjectDetector();
 bbox1full = step(detectors.face, im1);
 
 % Resize faces for better detection of small or large faces and re-detect
+%{a
 if isempty(bbox1full) % try looking for small faces
-    im1 = imresize(im1,2);
-    bbox1full = step(detectors.face, im1);
+    fprintf('Small faces doubled: ')
+    bbox1full = step(detectors.face, imresize(im1,2));
+    bbox1full = round(bbox1full/2);
 end
 if isempty(bbox1full) % try looking for big faces
-    im1 = imresize(im1,1/4);
-    bbox1full = step(detectors.face, im1);
+    fprintf('Large faces halved: ')
+    bbox1full = step(detectors.face, imresize(im1,1/2));
+    bbox1full = bbox1full*2;
 end
 if isempty(bbox1full) % no faces of any close size could be found
-    disp('No faces detected: exiting.')
+    fprintf('No faces detected: exiting.\n')
     return
 end
-
-mean_height = mean(bbox1full(:,3));
-if mean_height < 50
-    im1 = imresize(im1,50/mean_height);
-    bbox1full = step(detectors.face, im1);
-elseif mean_height > 400
-    im1 = imresize(im1,400/mean_height);
-    bbox1full = step(detectors.face, im1);
-end
+%}
 
 % Detect replacer faces
 bbox2 = step(detectors.face, im2);
@@ -258,7 +255,12 @@ for index = 1:size(bbox1full,1)
     face_swap = face_swap + double(replacer_face).*output_mask;
 
     face_swap = imresize(face_swap,bbox1(3)/size(face_swap,1));
-
+    
+    % Strange imresize behavior: does not always exactly match desired size
+    if size(face_swap,1) ~= bbox1(3)
+        face_swap = imresize(face_swap,bbox1(3)/size(face_swap,1));
+    end
+    
     output = im1;
     output(bbox1(2) + (1:bbox1(4)) - 1, bbox1(1) + (1:bbox1(3)) - 1,:) = uint8(face_swap);
 
